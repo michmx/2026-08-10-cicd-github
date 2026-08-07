@@ -55,7 +55,7 @@ The exit code is `2` indicating failure. What about on success? The exit code is
 But this works for any command you run on the command line! For example, if I mistyped `git status`:
 
 ```bash
-> git status
+> git stauts
 > echo $?
 ```
 
@@ -97,7 +97,7 @@ To enter the Python interpreter, simply type `python3` in your command line. On 
 ```
 -->
 ```python
->>> from subprocess import getstatusoutput # for python2: from commands import getstatusoutput
+>>> from subprocess import getstatusoutput
 >>> status,output=getstatusoutput('ls')
 >>> status
 0
@@ -146,29 +146,41 @@ else:
 
 and then make it executable `chmod +x python_exit.py`. Now, try running it with `./python_exit.py hello` and `./python_exit.py goodbye` and see what those exit codes are. Déjà vu?
 
-## Ignoring Exit Codes
 
-To finish up this section, one thing you'll notice sometimes (in ATLAS or CMS) is that a script you run doesn't seem to respect exit codes. A notable example in ATLAS is the use of `setupATLAS` which returns non-zero exit status codes even though it runs successfully! This can be very annoying when you start development with the assumption that exit status codes are meaningful (such as with CI). In these cases, you'll need to ignore the exit code. An easy way to do this is to execute a second command that always gives `exit 0` if the first command doesn't, like so:
+## Assert
 
-```bash
-> ls nonexistent-file || echo ignore failure
+An assertion is a sanity-check carried out by the `assert` statement, useful when testing or debugging code.
+
+Let's create a file called `python_assert.py` with the following content:
+```python
+energy = -10 
+
+assert energy > 0, "Energy must be positive"
 ```
 
-The `command_1 || command_2` operator means to execute `command_2` only if `command_1` has failed (non-zero exit code). Similarly, the `command_1 && command_2` operator means to execute `command_2` only if `command_1` has succeeded. Try this out using one of scripts you made in the previous session:
+and then run it with `python3 python_assert.py`.
 
-```bash
-> ./python_exit.py goodbye || echo ignore
+What happens when an assertion fails in python?
+
+```text
+Traceback (most recent call last):
+  File "python_assert.py", line 3, in <module>
+    assert energy > 0, "Energy must be positive"
+           ^^^^^^^^^^
+AssertionError: Energy must be positive
 ```
 
-What does that give you?
+An exception is raised, `AssertionError`. The nice thing about python is that all unhandled exceptions return a non-zero exit code. If an exit code is not set, this defaults to `1`.
+```bash
+> echo $?
+1
+```
 
-:::{admonition} Overriding Exit Codes
-:class: tip
-It's not really recommended to 'hack' the exit codes like this, but this example is provided so that you are aware of how to do it, if you ever run into this situation. Assume that scripts respect exit codes, until you run into one that does not.
-:::
+We can see that assertions automatically indicate failure in a script.
+
 
 :::{admonition} Key Points
 :class: note
 - Exit codes are used to identify if a command or script executed with errors or not
-- Not everyone respects exit codes
+- Assertions automatically indicate failure in a script
 :::

@@ -7,7 +7,7 @@ chapters:
 - file: setup
 - file: 01-introduction
 - file: 02-enter-sandman
-- file: 03-pytest-revisited
+#- file: 03-pytest-revisited  -  Combining asserts on the previous chapter
 - file: 04-understanding-yaml
 - file: 05-understanding-yaml-and-ci
 - file: 07-hello-world-ci
