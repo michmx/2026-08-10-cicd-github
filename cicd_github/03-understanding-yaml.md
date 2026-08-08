@@ -13,13 +13,15 @@
 
 ## YAML
 
-YAML (YAML Ain't Markup Language (a recursive acronym), originally standing for Yet Another Markup Language) is a human-readable data-serialization language. It is commonly used for configuration files and in applications where data is being stored or transmitted. CI systems' modus operandi typically rely on YAML for configuration. We'll cover, briefly, some of the native types involved and what the structure looks like.
+YAML (YAML Ain't Markup Language (a recursive acronym), originally standing for Yet Another Markup Language) is a human-readable 
+data-serialization language. It is commonly used for configuration files and in applications where data is being stored or transmitted. 
+
+CI systems' modus operandi typically rely on YAML for configuration. We'll cover, briefly, some of the native types involved and what the structure looks like.
 
 :::{admonition} Tabs or Spaces?
 :class: tip
-We strongly suggest you use spaces for a YAML document. Indentation is done
-with one or more spaces, however **two spaces** is the unofficial standard
-commonly used.
+Indentation is done with one or more spaces, 
+however **two spaces** is the unofficial standard commonly used.
 :::
 
 ### Scalars

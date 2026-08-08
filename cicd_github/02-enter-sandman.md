@@ -2,7 +2,7 @@
 
 :::{admonition} Overview
 :class: note
-**Teaching:** 10 min | **Exercises:** 10 min
+**Teaching:** 10 min
 
 **Questions**
 - What is an exit code?
