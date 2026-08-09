@@ -30,7 +30,7 @@ jobs:
 
 Let's go ahead and teach our CI to build our code. Let's add another job (named `build_skim`) that runs in parallel for right now, and runs the compiler `ROOT` uses.
 <br/>
-**Note**: `ROOT` is a open source framework uses in High Energy Physics.<!-- ([https://root.cern/](https://root.cern/)).-->
+**Note**: `ROOT` is an open-source framework used in High Energy Physics.<!-- ([https://root.cern/](https://root.cern/)).-->
 
 Let's give a try.
 
@@ -81,26 +81,26 @@ git push -u origin feature/add-actions
 
 ### No root-config?
 
-Ok, so maybe we were a little naive here. GitHub runners come pre-installed with a wide variety of software that is commonly needed in CI workflows (e.g. for Ubuntu 22.04 runners the list can be found [here](https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2204-Readme.md)). ROOT is not pre-installed, so we will have to add a step to install it ourselves. After reading the [ROOT documentation](https://root.cern/install/#run-in-a-docker-container), we find that a convenient way to run it on various systems is using something called a Docker container.
+Ok, so maybe we were a little naive here. GitHub runners come pre-installed with a wide variety of software that is commonly needed in CI workflows (e.g. for Ubuntu 24.04 runners — which is what `ubuntu-latest` currently gives you — the list can be found [here](https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2404-Readme.md)). ROOT is not pre-installed, so we will have to add a step to install it ourselves. After reading the [ROOT documentation](https://root.cern/install/#run-in-a-docker-container), we find that a convenient way to run it on various systems is using something called a Docker container.
 
 There are several tools that are used for containerization, like Docker, Podman, and Apptainer (formerly Singularity). For this tutorial you don't need to know anything about containerization. You can just think of this as the base software set that comes pre-installed on the system that runs your code.
 
-We will be using the Docker images hosted at the [`rootproject/root` Docker Hub](https://hub.docker.com/r/rootproject/root). Let's start by using the image with tag `6.26.10-conda`.
+We will be using the Docker images hosted at the [`rootproject/root` Docker Hub](https://hub.docker.com/r/rootproject/root). Let's start by using the image with tag `6.32.04-ubuntu24.04`.
 
 ```yaml
 build_skim:
   runs-on: ubuntu-latest
-  container: rootproject/root:6.26.10-conda
+  container: rootproject/root:6.32.04-ubuntu24.04
   steps:
     - name: checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
     - name: build
       run: |
         COMPILER=$(root-config --cxx)
         $COMPILER -g -O3 -Wall -Wextra -Wpedantic -o skim skim.cxx
 ```
 
-Note the extra line `container: rootproject/root:6.26.10-conda` that specifies the container image that we want to use. Since it comes pre-packaged with ROOT, we do not need to have a step to install it. This image also contains other tools that we will need for the rest of the tutorial.
+Note the extra line `container: rootproject/root:6.32.04-ubuntu24.04` that specifies the container image that we want to use. Since it comes pre-packaged with ROOT, we do not need to have a step to install it. This image also contains other tools that we will need for the rest of the tutorial, including Python 3 — which we will invoke explicitly as `python3` later on.
 
 ::::{admonition} Failed again???
 :class: important
@@ -114,8 +114,8 @@ What's that?
 It seems the job cannot access the repository. We need to instruct GitHub actions to checkout the repository.
 ```yaml
 steps:
-   - name: checkout repository
-     uses: actions/checkout@v4
+  - name: checkout repository
+    uses: actions/checkout@v6
 ```
 Let’s go ahead and tell our CI to checkout the repository.
 :::
@@ -142,7 +142,7 @@ How do we fix it? We just need to add another variable to add the flags at the e
 :::
 ::::
 
-Ok, let's go ahead and update our `.github/workflow/main.yml` again, and it better be fixed or so help me...
+Ok, let's go ahead and update our `.github/workflows/main.yml` again, and it better be fixed or so help me...
 
 ### Ways to get software
 
@@ -158,9 +158,9 @@ build_skim:
       shell: bash -el {0}
   steps:
     - name: checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
     - name: Install ROOT
-      uses: mamba-org/setup-micromamba@v1
+      uses: mamba-org/setup-micromamba@v2
       with:
         environment-name: env
         create-args: root
@@ -178,7 +178,7 @@ Great, so we finally got it working... Let's build both the version of the code 
 ::::{admonition} Adding the `build_skim_latest` job
 :class: important
 
-What does the `.github/workflow/main.yml` look like now?
+What does the `.github/workflows/main.yml` look like now?
 
 :::{admonition} Solution
 :class: dropdown
@@ -192,10 +192,10 @@ jobs:
 
   build_skim:
     runs-on: ubuntu-latest
-    container: rootproject/root:6.26.10-conda
+    container: rootproject/root:6.32.04-ubuntu24.04
     steps:
       - name: checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: build
         run: |
@@ -208,7 +208,7 @@ jobs:
     container: rootproject/root:latest
     steps:
       - name: checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: latest
         run: |
@@ -219,13 +219,13 @@ jobs:
 :::
 ::::
 
-## Dependabot for updating gh action version
+## Dependabot for updating GitHub Action versions
 
-Github actions are accompanied by the tags ("@v2"...) which are versions/tags of that action. One might need to update this tags for example from "@v2" to "@v3" because the Github actions developers may fix existing bugs to the action or there may be other updates.
+GitHub Actions are accompanied by tags ("@v5"...) which are versions/tags of that action. One might need to update these tags, for example from "@v5" to "@v6", because the GitHub Actions developers may fix existing bugs to the action or there may be other updates.
 
-However, this process can be automated by using "Dependabot" which ensures that the workflow references the updated version of the action. If that is not the case, the Dependabot will open a pull request updating the tag of the Github action.
+However, this process can be automated by using "Dependabot" which ensures that the workflow references the updated version of the action. If that is not the case, the Dependabot will open a pull request updating the tag of the GitHub Action.
 
-The dependabot action can be added to a Github repository by creating the file `dependabot.yml` in the `.github/` folder. The content of the file looks like this [(Link to the dependabot.yml)](https://github.com/hsf-training/hsf-training-cicd-github/blob/gh-pages/.github/dependabot.yml):
+Dependabot can be enabled in a GitHub repository by creating the file `dependabot.yml` in the `.github/` folder. The content of the file looks like this [(Link to the dependabot.yml)](https://github.com/hsf-training/hsf-training-cicd-github/blob/gh-pages/.github/dependabot.yml):
 
 ```yaml
 version: 2
@@ -237,7 +237,7 @@ updates:
       interval: "weekly"
 ```
 
-where interval is the frequency of looking for updates to Github actions.
+where interval is the frequency of looking for updates to GitHub Actions.
 
 For more information on Dependabot, see e.g., [here.](https://docs.github.com/en/code-security/dependabot)
 

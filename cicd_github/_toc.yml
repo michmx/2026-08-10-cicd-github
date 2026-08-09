@@ -8,11 +8,11 @@ chapters:
 - file: 01-introduction
 - file: 02-enter-sandman
 #- file: 03-pytest-revisited  -  Combining asserts on the previous chapter
-- file: 04-understanding-yaml
+- file: 03-understanding-yaml
+- file: 04-hello-world-ci
 - file: 05-understanding-yaml-and-ci
-- file: 07-hello-world-ci
-- file: 08-adding-ci-to-your-code
-- file: 09-the-matrix
+#- file: 08-adding-ci-to-your-code
+- file: 06-the-matrix
 - file: 11-running-dependent-jobs
 - file: 12-skim-milk
 - file: 13-the-spy-game
