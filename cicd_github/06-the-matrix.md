@@ -48,18 +48,13 @@ jobs:
           $COMPILER -g -O3 -Wall -Wextra -Wpedantic -o skim skim.cxx $FLAGS
 ```
 
-:::{admonition} Building a matrix across different versions
-:class: tip
 
 We could do better using `matrix`. The latter allows us to test the code against a combination of versions in a single job.
 
 ```yaml
-jobs:
-  greeting:
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo hello world
-
+name: example
+on: push
+jobs: 
   build_skim:
     runs-on: ubuntu-latest
     container: rootproject/root:${{ matrix.version }}
@@ -76,10 +71,15 @@ jobs:
           FLAGS=$(root-config --cflags --libs)
           $COMPILER -g -O3 -Wall -Wextra -Wpedantic -o skim skim.cxx $FLAGS
 ```
-Beware of one YAML pitfall when listing versions in a matrix: YAML parses unquoted numbers, and a number like `3.10` is read as the float `3.1` (the trailing zero is dropped). A matrix like `version: [3.12, 3.13, 3.14]` would therefore run on unintended versions. This bit many projects when Python 3.10 was released — their matrices silently became `3.1`. Avoid it by always quoting version numbers as strings: `version: ['3.12', '3.13', '3.14']`.
 
 More details on matrix: [https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idstrategymatrix](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idstrategymatrix).
+
+:::{admonition} Parsing numbers in YAML
+:class: warning
+Beware of one YAML pitfall when listing versions in a matrix: YAML parses unquoted numbers, and a number with a trailing zero like `3.10` is read as the float `3.1` (the trailing zero is dropped). A matrix like `version: [3.9, 3.10, 3.11]` would therefore silently run on `3.9`, `3.1`, and `3.11`. This bit many projects when Python 3.10 was released — their CI matrices requested Python `3.1` instead. Avoid it by always quoting version numbers as strings: `version: ['3.9', '3.10', '3.11']`.
 :::
+
+
 
 We can push the changes to GitHub and see how it will look like.
 ```bash

@@ -6,6 +6,13 @@ The aim of this module is to:
 - explore what it means to build a CI/CD workflow
 - guide you through building a CI/CD workflow
 
+:::{admonition} The HSF Training CI/CD Lessons
+:class: seealso
+This is a condensed version of the HSF Training CI/CD with GitHub for [CompHEP 2026](https://indico.cern.ch/event/1672591/). The original lesson can be found [here](https://hsf-training.github.io/hsf-training-cicd-github/).
+
+There is also a version of this lesson for GitLab CI/CD, which can be found [here](https://hsf-training.github.io/hsf-training-cicd/).
+:::
+
 :::{admonition} Prerequisites
 :class: caution
 This assumes that you'll have some basic background with your command line, for example:
@@ -16,13 +23,7 @@ This assumes that you'll have some basic background with your command line, for 
 4. How to authenticate to GitHub from the command line, either with SSH keys or with the `gh` command line interface (see [caching your GitHub credentials in git](https://docs.github.com/en/get-started/git-basics/caching-your-github-credentials-in-git))
 :::
 
-:::{admonition} The HSF Training CI/CD Lessons
-:class: seealso
-This is a condensed version of the HSF Training CI/CD with GitHub for [CompHEP 2026](https://indico.cern.ch/event/1672591/). The original lesson can be found [here](https://hsf-training.github.io/hsf-training-cicd-github/).
 
-There is also a version of this lesson for GitLab CI/CD, which can be found [here](https://hsf-training.github.io/hsf-training-cicd/).
-
-:::
 
 ## Table of Contents
 

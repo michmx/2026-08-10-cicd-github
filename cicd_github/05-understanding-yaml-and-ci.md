@@ -254,6 +254,9 @@ What does the `.github/workflows/main.yml` look like now?
 :class: dropdown
 
 ```yaml
+name: example
+on: push
+
 jobs:
   greeting:
     runs-on: ubuntu-latest
