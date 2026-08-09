@@ -164,24 +164,47 @@ Since it comes pre-packaged with ROOT, we do not need to have a step to install 
 This image also contains other tools that 
 we will need for the rest of the tutorial, including Python 3 — which we will invoke explicitly as `python3` later on.
 
-::::{admonition} Failed again???
-:class: important
+## Using Actions 
 
 What's that?
 
 `error: skim.cxx: No such file or directory`
 
-:::{admonition} Answer
-:class: dropdown
 It seems the job cannot access the repository. We need to instruct GitHub actions to checkout the repository.
+
+We will use the `actions/checkout` action to checkout the repository. 
+This action checks out your repository under `$GITHUB_WORKSPACE`, so your workflow can access it.
+
 ```yaml
 steps:
   - name: checkout repository
     uses: actions/checkout@v6
 ```
-Let’s go ahead and tell our CI to checkout the repository.
+
+:::{admonition} Actions
+In GitHub CI/CD, an Action is a reusable script that performs a specific step in your software development 
+workflow, such as checking out a repository (`actions/checkout`), setting up a tool (`actions/setup-python`), 
+deploying pages (`actions/deploy-pages`), etc. 
+
+The [actions/checkout](https://github.com/actions/checkout) action checks out your repository under the workspace, 
+so your workflow can access it.
 :::
-::::
+
+Let’s go ahead and tell our CI to checkout the repository:
+
+```yaml
+build_skim:
+runs-on: ubuntu-latest
+container: rootproject/root:6.32.04-ubuntu24.04
+steps:
+  - name: checkout repository
+    uses: actions/checkout@v6    
+  - name: build
+    run: |
+      COMPILER=$(root-config --cxx)
+      FLAGS=$(root-config --cflags --libs)
+      $COMPILER -g -O3 -Wall -Wextra -Wpedantic -o skim skim.cxx $FLAGS
+```
 
 
 ### Ways to get software
@@ -189,8 +212,9 @@ Let’s go ahead and tell our CI to checkout the repository.
 As we saw before, GitHub pre-installs many common software packages and libraries that people might need, 
 but often we need to install additional software. There are often actions we can use for this, 
 like `actions/setup-python` to install python or `mamba-org/setup-micromamba` to install 
-[Mamba](https://mamba.readthedocs.io) (an alternative to [Conda](https://docs.conda.io), an environment manager). These actions are simply 
-repositories that contain scripts to install or perform certain actions. You can find more information
+[Mamba](https://mamba.readthedocs.io) (an alternative to [Conda](https://docs.conda.io), an environment manager). 
+
+These actions are simply repositories that contain scripts to install or perform certain actions. You can find more information
 about these actions by going to github.com/\<name-of-action\>. For example, for `mamba-org/setup-micromamba` you can 
 find more information at [https://github.com/mamba-org/setup-micromamba](https://github.com/mamba-org/setup-micromamba).
 
@@ -265,32 +289,10 @@ jobs:
 :::
 ::::
 
-## Dependabot for updating GitHub Action versions
-
-GitHub Actions are accompanied by tags ("@v5"...) which are versions/tags of that action. One might need to update these tags, for example from "@v5" to "@v6", because the GitHub Actions developers may fix existing bugs to the action or there may be other updates.
-
-However, this process can be automated by using "Dependabot" which ensures that the workflow references the updated version of the action. If that is not the case, the Dependabot will open a pull request updating the tag of the GitHub Action.
-
-Dependabot can be enabled in a GitHub repository by creating the file `dependabot.yml` in the `.github/` folder. The content of the file looks like this [(Link to the dependabot.yml)](https://github.com/hsf-training/hsf-training-cicd-github/blob/gh-pages/.github/dependabot.yml):
-
-```yaml
-version: 2
-updates:
-  # Maintain dependencies for GitHub Actions
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-```
-
-where interval is the frequency of looking for updates to GitHub Actions.
-
-For more information on Dependabot, see e.g., [here.](https://docs.github.com/en/code-security/dependabot)
-
 
 :::{admonition} Key Points
 :class: note
-- You should bookmark the GitHub Actions reference. You'll visit that page often.
+- You should bookmark the [GitHub Actions reference](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax). You'll visit that page often.
 - Steps run shell commands (`run:`) or invoke reusable actions (`uses:`); steps combine into jobs.
 - Workflows are made up of one or more jobs and can be scheduled or triggered.
 :::
