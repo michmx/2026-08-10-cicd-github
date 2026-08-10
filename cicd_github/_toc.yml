@@ -17,6 +17,6 @@ chapters:
 #- file: 12-skim-milk
 #- file: 13-the-spy-game
 - file: 08-plotting-to-take-over-the-world
-- file: 15-a-simple-test
-- file: 16-homework
-- file: 17-github-packages
+- file: 09-a-simple-test
+#- file: 16-homework
+- file: 10-github-packages

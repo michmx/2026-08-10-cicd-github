@@ -1,4 +1,4 @@
-# Bonus Episode: Building and deploying a Docker container to Github Packages
+# Bonus Episode: Building and deploying a Docker container to GitHub Packages
 
 :::{admonition} Overview
 :class: note
@@ -9,7 +9,7 @@
 - How to share Docker images?
 
 **Objectives**
-- To be able to build a Docker container and share it via GitHub packages
+- To be able to build a Docker container and share it via GitHub Packages
 :::
 
 :::{admonition} Prerequisites
@@ -22,26 +22,34 @@ Head over to [our training on Docker](https://hsf-training.github.io/hsf-trainin
 
 Python packages can be installed using a Docker image. The following example illustrates how to write a Dockerfile for building an image containing python packages.
 
-```text
-FROM ubuntu:20.04
+```dockerfile
+FROM ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update \
-  && apt-get install wget -y \
-  && apt-get install dpkg-dev cmake g++ gcc binutils libx11-dev libxpm-dev \
-    libxft-dev libxext-dev python3 libssl-dev libgsl0-dev libtiff-dev \
-    python3-pip -y
+  && apt-get install -y wget dpkg-dev cmake g++ gcc binutils libx11-dev \
+    libxpm-dev libxft-dev libxext-dev libssl-dev libgsl-dev libtiff-dev \
+    python3 python3-pip python3-venv \
+  && rm -rf /var/lib/apt/lists/*
 
-RUN pip3 install numpy awkward uproot4 particle hepunits matplotlib \
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+RUN pip install numpy awkward uproot particle hepunits matplotlib \
   mplhep vector fastjet iminuit
 ```
 
 As we see, several packages are installed.
 
+:::{admonition} Why the virtual environment?
+:class: tip
+On Ubuntu 24.04 the system Python is *externally managed* ([PEP 668](https://peps.python.org/pep-0668/)), so `pip` refuses to install packages into it. The idiomatic fix is to create a virtual environment inside the image and put its `bin/` first on `PATH`, as done above; a quick-and-dirty alternative is `pip install --break-system-packages`.
+:::
+
 ## Publish Docker images with GitHub Packages and share them!
 
-It is possible to publish Docker images with [GitHub packages](https://github.com/features/packages).
+It is possible to publish Docker images with [GitHub Packages](https://github.com/features/packages), via its container registry `ghcr.io`.
 To do so, one needs to use GitHub CI/CD. A step-by-step guide is presented here.
 
 * **Step 1**: Create a GitHub repository and clone it locally.
@@ -51,7 +59,7 @@ To do so, one needs to use GitHub CI/CD. A step-by-step guide is presented here.
 * **Step 5**: In the `Docker-build-deploy.yml` file, add the content below.
 * **Step 6**: Add LICENSE and README as recommended in the [SW Carpentry Git-Novice Lesson](https://swcarpentry.github.io/git-novice/), and then the repository is good to go.
 
-```text
+```yaml
 name: Create and publish a Docker image
 
 on:
@@ -72,10 +80,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Log in to the Container registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -83,21 +91,23 @@ jobs:
 
       - name: Docker Metadata
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
-          push: true
+          push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 ```
 
+Note the line `push: ${{ github.event_name != 'pull_request' }}`: on pull requests we only *build* the image as a test; only pushes to `main` actually publish it to the registry.
+
 :::{admonition} Key Points
 :class: note
 - Python packages can be installed in Docker images along with ubuntu packages.
-- It is possible to publish and share Docker images over github packages.
+- It is possible to publish and share Docker images via GitHub Packages.
 :::
