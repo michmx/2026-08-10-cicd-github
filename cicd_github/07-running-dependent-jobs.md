@@ -2,13 +2,15 @@
 
 :::{admonition} Overview
 :class: note
-**Teaching:** 5 min | **Exercises:** 5 min
+**Teaching:** 15 min | **Exercises:** 5 min
 
 **Questions**
 - How do you make some jobs run after other jobs?
+- How can I run my skimming code in the GitHub Actions?
 
 **Objectives**
 - Run some jobs in serial.
+- Learn how to define dependencies between jobs.
 :::
 
 ## Defining dependencies
