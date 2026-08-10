@@ -292,6 +292,28 @@ jobs:
 :::
 ::::
 
+## Dependabot for updating GitHub Action versions
+
+GitHub Actions are accompanied by tags ("@v5"...) which are versions/tags of that action. One might need to update these tags, for example from "@v5" to "@v6", because the GitHub Actions developers may fix existing bugs to the action or there may be other updates.
+
+However, this process can be automated by using "Dependabot" which ensures that the workflow references the updated version of the action. If that is not the case, the Dependabot will open a pull request updating the tag of the GitHub Action.
+
+Dependabot can be enabled in a GitHub repository by creating the file `dependabot.yml` in the `.github/` folder. The content of the file looks like this [(Link to the dependabot.yml)](https://github.com/hsf-training/hsf-training-cicd-github/blob/gh-pages/.github/dependabot.yml):
+
+```yaml
+version: 2
+updates:
+  # Maintain dependencies for GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+```
+
+where interval is the frequency of looking for updates to GitHub Actions.
+
+For more information on Dependabot, see e.g., [here.](https://docs.github.com/en/code-security/tutorials/secure-your-dependencies/dependabot-quickstart)
+
 
 :::{admonition} Key Points
 :class: note
