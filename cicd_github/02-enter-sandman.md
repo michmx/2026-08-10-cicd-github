@@ -80,22 +80,7 @@ Try out some other commands on your system, and see what things look like.
 
 As you've seen above, the exit code from the last executed command is stored in the `$?` environment variable. Accessing from a shell is easy `echo $?`. What about from python? There are many different ways depending on which library you use. Using similar examples above, we can use the `getstatusoutput()` call:
 
-:::{admonition} Snake Charming
-:class: tip
-To enter the Python interpreter, simply type `python3` in your command line. On some systems, you need to use the `python` command instead of `python3`. Check which version you have with `python3 --version`.
-:::
 
-<!--
-```python
->>> import os,subprocess
->>> ret = os.system('ls')
->>> os.WEXITSTATUS(ret)
-0
->>> ret = os.system('ls nonexistent-file')
->>> os.WEXITSTATUS(ret)
-1
-```
--->
 ```python
 >>> from subprocess import getstatusoutput
 >>> status,output=getstatusoutput('ls')
@@ -114,63 +99,68 @@ So now that we can get those exit codes, how can we set them? Let's explore this
 
 ### Shell
 
-Create a file called `bash_exit.sh` with the following content:
+Create a file called `validate_energy.sh` with the following content:
 
 ```bash
 #!/usr/bin/env bash
 
-if [ $1 == "hello" ]
+if [ $1 -lt 0 ]
 then
-  exit 0
-else
+  echo "Energy must be positive"
   exit 59
+else
+  exit 0
 fi
 ```
 
-and then make it executable `chmod +x bash_exit.sh`. Now, try running it with `./bash_exit.sh hello` and `./bash_exit.sh goodbye` and see what those exit codes are with `echo $?`.
+and then make it executable `chmod +x validate_energy.sh`. Now, try running it with `./validate_energy.sh -10` and `./validate_energy.sh 10` and see what those exit codes are with `echo $?`.
 
 ### Python
 
-The same can be done in a python file. Create a file called `python_exit.py` with the following content:
+The same can be done in a python file. Create a file called `validate_energy.py` with the following content:
 
 ```python
 #!/usr/bin/env python3
 
 import sys
 
-if sys.argv[1] == "hello":
-  sys.exit(0)
-else:
+if int(sys.argv[1]) < 0:
+  print("Energy must be positive")
   sys.exit(59)
+else:
+  sys.exit(0)
 ```
 
-and then make it executable `chmod +x python_exit.py`. Now, try running it with `./python_exit.py hello` and `./python_exit.py goodbye` and see what those exit codes are. Déjà vu?
+and then make it executable `chmod +x validate_energy.py`. Now, try running it with `./validate_energy.py -10` and `./validate_energy.py 10` and see what those exit codes are. Déjà vu?
 
 
 ## Assert
 
 An assertion is a sanity-check carried out by the `assert` statement, useful when testing or debugging code.
 
-Let's create a file called `python_assert.py` with the following content:
+Let's create a file called `energy_assert.py` with the following content:
 ```python
-energy = -10 
+#!/usr/bin/env python3
 
+import sys
+
+energy = int(sys.argv[1]) 
 assert energy > 0, "Energy must be positive"
 ```
 
-and then run it with `python3 python_assert.py`.
+and then run it with `python3 energy_assert.py -10`.
 
 What happens when an assertion fails in python?
 
 ```text
 Traceback (most recent call last):
-  File "python_assert.py", line 3, in <module>
+  File "energy_assert.py", line 3, in <module>
     assert energy > 0, "Energy must be positive"
            ^^^^^^^^^^
 AssertionError: Energy must be positive
 ```
 
-An exception is raised, `AssertionError`. The nice thing about python is that all unhandled exceptions return a non-zero exit code. If an exit code is not set, this defaults to `1`.
+An exception is raised, `AssertionError`. The nice thing about python is that all unhandled exceptions return a non-zero exit code:
 ```bash
 > echo $?
 1
