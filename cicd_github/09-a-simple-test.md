@@ -6,9 +6,10 @@
 
 **Questions**
 - How does a realistic workflow look for a physics analysis?
+- How to generate reports?
 
 **Objectives**
-- Actually add a test on the output of running physics
+- Actually add a test on the output of running physics code
 :::
 
 ## Why testing?
@@ -62,7 +63,7 @@ We will use [pytest](https://docs.pytest.org/), the most widely used
 testing framework for Python. The idea is simple: you write small functions that check one thing each, and
 pytest finds them, runs them, and reports which ones passed or failed.
 
-It is installed with pip:
+It can be installed with pip:
 
 ```bash
 pip install pytest
@@ -133,8 +134,6 @@ you can run the tests in a terminal with the following commands:
 apptainer exec docker://rootproject/root:6.32.04-ubuntu24.04 pytest
 ```
 
-```bash
-
 ## Running tests in GitHub Actions
 
 You probably already guessed it: you can add a job on the GitHub Actions pipeline to run the tests.
@@ -159,11 +158,15 @@ Think about two things:
         uses: actions/checkout@v6
 
       - name: install pytest
-        run: pip install pytest
+        run: apt-get update && apt-get install -y python3-pytest
 
       - name: run tests
         run: pytest -v
 ```
+
+Note that we install pytest with `apt-get` (as we did for the XRootD client) rather than `pip install pytest`:
+the `rootproject/root` image does not ship `pip`, and on Ubuntu 24.04 the system Python refuses `pip install`
+outside a virtual environment anyway.
 
 The job needs the ROOT container, since the tests import ROOT. But it has no `needs`: our tests build
 their small datasets in memory, so they don't depend on the output of `build_skim`, `skim` or `plot` —
@@ -177,6 +180,207 @@ marked as failed — exactly the red ❌ next to the commit that tells you (and 
 trust that version of the code. 
 
 Try it out: break the `ranges` on purpose (e.g. unvalid range in a variable), push, and watch the parametrized tests catch it.
+
+When a test fails, it should be easy to detect what was expected and determine how
+to pinpoint the problem. For this, it is important to report the test results in a way that is easy to understand.
+As the number of tests implemented scale up, it is also important to quickly identify the tests that are failing, and 
+the main reason for the failure. Looking at the pipeline log is not the best way to do this.
+
+GitLab CI provides a way to report test results in a standard format, so that they can be easily visualized in the
+pipeline results. This is done by using the [JUnit](https://junit.org/junit5/) test report XML format (JUnit is a popular
+testing framework for Java, but the XML format is language-agnostic and the reports have become a standard).
+
+Each framework has its own way to generate the JUnit XML report (check the documentation of your favorite tool). 
+For CTest, we can use the `--output-junit <file>` option. Once the XML is generated, we need to upload it as an artifact
+The `.gitlab-ci.yml` file looks then like this:
+
+```yaml
+stages:
+  - build
+  - run
+  - test
+    
+before_script:
+  - mkdir -p cpp/analysis/build
+
+build_code:
+  stage: build
+  image: rootproject/root:6.26.10-ubuntu22.04
+  script:
+    - cd cpp/analysis/build
+    - cmake ../
+    - make
+  artifacts:
+    paths:
+      - cpp/analysis/build/
+build_code_latest:
+  stage: build
+  image: rootproject/root:latest
+  script:
+    - cd cpp/analysis/build
+    - cmake ../
+    - make
+  allow_failure: true
+  
+make_histograms:
+  stage: run
+  image: rootproject/root:6.26.10-ubuntu22.04
+  dependencies:
+    - build_code
+  script:
+    - cd cpp/analysis/build
+    - time ./src/double_muon_analysis ../data/DoubleMu.root
+  artifacts:
+    paths:
+      - cpp/analysis/build/histograms.root
+    expire_in: 1 day
+
+test_histograms:
+  stage: test
+  image: rootproject/root:6.26.10-ubuntu22.04
+  dependencies:
+    - build_code
+    - make_histograms
+  script:
+    - cd cpp/analysis/build
+    - ctest --output-on-failure
+```
+
+Let's commit and push the changes, and check the pipeline results.
+
+
+## Report test results
+
+When a test fails, it should be easy to detect what was expected and determine how
+to pinpoint the problem. For this, it is important to report the test results in a way that is easy to understand.
+As the number of tests implemented scale up, it is also important to quickly identify the tests that are failing, and 
+the main reason for the failure. Looking at the pipeline log is not the best way to do this.
+
+Actions provide a way to report test results in a standard format, so that they can be easily visualized in the
+pipeline results. This is done by using the [JUnit](https://junit.org/junit5/) test report XML format (JUnit is a popular
+testing framework for Java, but the XML format is language-agnostic and the reports have become a standard).
+
+Each framework has its own way to generate the JUnit XML report (check the documentation of your favorite tool). 
+For Pytest, we can use the `--junitxml= <file>` option. Once the XML is generated, we need to tell GitHub where to find it. 
+This is done by the action `test-summary/action@v1`:
+
+```yaml
+    - name: Create test summary
+      uses: test-summary/action@v1
+      with:
+        paths: <file>
+      if: always()
+```
+
+It is important to add the `when: always` option, so that the report is generated even if the test fails.
+
+Adding the report, our YAML file now looks like this:
+
+```yaml
+name: example
+on: push
+
+jobs:
+  build_skim:
+    runs-on: ubuntu-latest
+    container: rootproject/root:6.32.04-ubuntu24.04
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v6
+
+      - name: build
+        run: |
+          COMPILER=$(root-config --cxx)
+          FLAGS=$(root-config --cflags --libs)
+          $COMPILER -g -O3 -Wall -Wextra -Wpedantic -o skim skim.cxx $FLAGS
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: skim
+          path: skim
+
+  skim:
+    needs: build_skim
+    runs-on: ubuntu-latest
+    container: rootproject/root:6.32.04-ubuntu24.04
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v6
+        
+      - uses: actions/download-artifact@v8
+        with:
+          name: skim
+          
+      - name: install XRootD client
+        run: apt-get update && apt-get install -y xrootd-client
+        
+      - name: skim
+        run: |
+          chmod +x ./skim
+          ./skim root://eospublic.cern.ch//eos/root-eos/HiggsTauTauReduced/GluGluToHToTauTau.root skim_ggH.root 19.6 11467.0 0.1
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: skim_ggH
+          path: skim_ggH.root
+          retention-days: 7
+
+  plot:
+    needs: skim
+    runs-on: ubuntu-latest
+    container: rootproject/root:6.32.04-ubuntu24.04
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v6
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: skim_ggH
+
+      - name: plot
+        run: python3 histograms.py skim_ggH.root ggH hist_ggH.root
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: histograms
+          path: hist_ggH.root
+
+  test:
+    runs-on: ubuntu-latest
+    container: rootproject/root:6.32.04-ubuntu24.04
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v6
+
+      - name: install pytest
+        run: apt-get update && apt-get install -y python3-pytest
+
+      - name: run tests
+        run: pytest -v --junitxml=pytest.xml
+
+      - name: Create test summary
+        uses: test-summary/action@v1
+        with:
+          paths: pytest.xml
+        if: always()
+```
+
+Update the pipeline, and check the results. Can you figure out where the test report is on the Web interface?
+If something fails, how to quickly identify the source of the failure?
+
+
+## Extend your pipeline
+
+We have covered the basics, and now you have a working CI/CD pipeline that builds your code, runs it, and runs a test.
+You can extend it to add more stages, more tests, and more features.
+
+There is a lot more to learn about, and from now on is your turn to explore and learn more about it.
+Keep at hand the [GitHub Actions reference](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax), and 
+see how you can extend your pipeline to cover the needs of your projects.
+
+Whenever you start a new project, keep in mind the tests you want to run, and the stages you want to have in your pipeline. 
+You can use this repository as a template, and you will have a working pipeline ready to use. 
+
 
 :::{admonition} Key Points
 :class: note
