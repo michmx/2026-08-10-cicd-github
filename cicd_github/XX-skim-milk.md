@@ -30,10 +30,10 @@ jobs:
     container: rootproject/root:${{ matrix.version }}
     strategy:
       matrix:
-        version: [6.26.10-conda, latest]
+        version: [6.32.04-ubuntu24.04, latest]
     steps:
       - name: checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: build
         run: |
@@ -42,7 +42,7 @@ jobs:
           $COMPILER -g -O3 -Wall -Wextra -Wpedantic -o skim skim.cxx $FLAGS
 ```
 
-Since the `skim` binary is built, let's see if we can run it. We need to add a job , with name `skim`.
+Since the `skim` binary is built, let's see if we can run it. We need to add a job named `skim`.
 
 `skim` is meant to process data (skimming) we are going to run on.
 
@@ -51,13 +51,13 @@ Let's go ahead and figure out how to define a run job. Seems too easy to be true
 skim:
   needs: build_skim
   runs-on: ubuntu-latest
-  container: rootproject/root:6.26.10-conda
+  container: rootproject/root:6.32.04-ubuntu24.04
   steps:
-      - name: checkout repository
-        uses: actions/checkout@v4
+    - name: checkout repository
+      uses: actions/checkout@v6
 
-      - name: skim
-        run: ./skim
+    - name: skim
+      run: ./skim
 ```
 
 After you've added the `skim` job you can push your changes to GitHub:
@@ -89,25 +89,30 @@ Artifacts are used to upload (`upload-artifact`) and download  (`download-artifa
 
 :::{admonition} More Reading
 :class: seealso
-- [https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts](https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts)
+- [https://docs.github.com/en/actions/tutorials/store-and-share-data](https://docs.github.com/en/actions/tutorials/store-and-share-data)
 :::
 
 :::{admonition} Passing data between two jobs in a workflow
 :class: tip
 ```yaml
 job_1:
-  - uses: actions/upload-artifact@v4
+  - uses: actions/upload-artifact@v7
     with:
       name: <name>
       path: <file>
 job_2:
-  - uses: actions/download-artifact@v4
+  - uses: actions/download-artifact@v8
     with:
       name: <name>
 ```
 :::
 
 **Note** that the artifact name should not contain any of the following characters `"`,`:`,`<`,`>`,`|`,`*`,`?`,`\`,`/`.
+
+:::{admonition} Artifact names must be unique
+:class: caution
+Artifacts are immutable: each artifact name can only be uploaded once per workflow run. A matrix job runs the same steps once per matrix entry, so each entry has to upload its artifact under a different name — which is why we template the artifact name with `${{ matrix.version }}` below. The download step must then request that exact name.
+:::
 
 In order to take advantage of passing data between two jobs, one combines `download-artifact` with `needs`.
 
@@ -126,10 +131,10 @@ build_skim:
   container: rootproject/root:${{ matrix.version }}
   strategy:
     matrix:
-      version: [6.26.10-conda, latest]
+      version: [6.32.04-ubuntu24.04, latest]
   steps:
     - name: checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: build
       run: |
@@ -137,7 +142,7 @@ build_skim:
         FLAGS=$(root-config --cflags --libs)
         $COMPILER -g -O3 -Wall -Wextra -Wpedantic -o skim skim.cxx $FLAGS
 
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v7
       with:
         name: skim${{ matrix.version }}
         path: skim
@@ -145,14 +150,14 @@ build_skim:
 skim:
   needs: build_skim
   runs-on: ubuntu-latest
-  container: rootproject/root:6.26.10-conda
+  container: rootproject/root:6.32.04-ubuntu24.04
   steps:
     - name: checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
-    - uses: actions/download-artifact@v4
+    - uses: actions/download-artifact@v8
       with:
-        name: skim6.26.10-conda
+        name: skim6.32.04-ubuntu24.04
 
     - name: skim
       run: ./skim

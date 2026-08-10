@@ -21,10 +21,10 @@ build_skim:
   container: rootproject/root:${{ matrix.version }}
   strategy:
     matrix:
-      version: [6.26.10-conda, latest]
+      version: [6.32.04-ubuntu24.04, latest]
   steps:
     - name: checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: build
       run: |
@@ -32,21 +32,21 @@ build_skim:
         FLAGS=$(root-config --cflags --libs)
         $COMPILER -g -O3 -Wall -Wextra -Wpedantic -o skim skim.cxx $FLAGS
 
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v7
       with:
         name: skim${{ matrix.version }}
         path: skim
 skim:
   needs: build_skim
   runs-on: ubuntu-latest
-  container: rootproject/root:6.26.10-conda
+  container: rootproject/root:6.32.04-ubuntu24.04
   steps:
     - name: checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
-    - uses: actions/download-artifact@v4
+    - uses: actions/download-artifact@v8
       with:
-        name: skim6.26.10-conda
+        name: skim6.32.04-ubuntu24.04
 
     - name: skim
       run: |
@@ -66,25 +66,27 @@ integrated_luminosity: 11467.0
 scale: 0.1
 ```
 
+The input file sits in a **personal, access-protected EOS area** (here, a past instructor's). If you're a CERN user, you would use a path in your own area, `/eos/user/<initial>/<username>/…` — the point is that any protected path fails in the same way without authentication.
+
 Our YAML file should look like
 ```yaml
 ...
- skim:
-   needs: build_skim
-   runs-on: ubuntu-latest
-   container: rootproject/root:6.26.10-conda
-   steps:
-     - name: checkout repository
-       uses: actions/checkout@v4
+skim:
+  needs: build_skim
+  runs-on: ubuntu-latest
+  container: rootproject/root:6.32.04-ubuntu24.04
+  steps:
+    - name: checkout repository
+      uses: actions/checkout@v6
 
-     - uses: actions/download-artifact@v4
-       with:
-         name: skim6.26.10
+    - uses: actions/download-artifact@v8
+      with:
+        name: skim6.32.04-ubuntu24.04
 
-     - name: skim
-       run: |
-         chmod +x ./skim
-         ./skim root://eosuser.cern.ch//eos/user/g/gstark/AwesomeWorkshopFeb2020/GluGluToHToTauTau.root skim_ggH.root 19.6 11467.0 0.1
+    - name: skim
+      run: |
+        chmod +x ./skim
+        ./skim root://eosuser.cern.ch//eos/user/g/gstark/AwesomeWorkshopFeb2020/GluGluToHToTauTau.root skim_ggH.root 19.6 11467.0 0.1
 ```
 
 What about the output?
@@ -95,19 +97,26 @@ Error: n <TNetXNGFile::Open>: [ERROR] Server responded with an error: [3010] Una
 
 ## Access Control
 
-The data we're using are on CERN User Storage (EOS). As a general rule, access to protected data should be authenticated, CERN can’t just grab it!.
-It means we need to give our GitHub Actions access to our data. CERN uses `kinit` for access control.
+The data we're using are on CERN User Storage (EOS). As a general rule, access to protected data must be authenticated — you can't just grab it!
+It means we need to give our GitHub Actions access to our data. CERN uses Kerberos (`kinit`) for access control.
 
-Anyhow, this is pretty much done by executing `echo $USER_PASS | kinit $USER_NAME@CERN.CH` assuming that we've set the corresponding environment variables.
+Anyhow, this is pretty much done by executing `echo "$USER_PASS" | kinit "$USER_NAME@CERN.CH"` assuming that we've set the corresponding environment variables. One practical detail: unlike the old conda-based ROOT images, the Ubuntu-based `rootproject/root` images don't ship a Kerberos client, so the job has to install it first with `apt-get update && apt-get install -y krb5-user` (you'll see this in the solution below).
 
 If you are not a CERN user, don't worry. We have a backup solution for you!
 You can use this file `root://eospublic.cern.ch//eos/root-eos/HiggsTauTauReduced/GluGluToHToTauTau.root` and skip the rest of this lesson.
+
+:::{admonition} Passwords in CI are not the real-world approach
+:class: caution
+CERN accounts use two-factor authentication these days, so piping your personal password into `kinit` from CI will generally not work for your own account — and storing a personal password in CI is bad practice anyway. The real-world pattern is a dedicated **service account** with restricted permissions (or short-lived tokens/keytabs). We keep the `kinit` example because the *mechanics* — storing a credential as a secret and using it in a job — are exactly the same.
+:::
 
 :::{admonition} Running example
 :class: tip
 Sometimes you'll run into a code example here that you might want to run locally but relies on variables you might not have set? Sure, simply do the following
 ```bash
-USER_PASS=hunter42 USER_NAME=GoodWill echo $USER_PASS | kinit $USER_NAME@CERN.CH
+USER_NAME=GoodWill
+USER_PASS=hunter42
+echo "$USER_PASS" | kinit "$USER_NAME@CERN.CH"
 ```
 :::
 
@@ -137,18 +146,24 @@ Note that there are some rules applied to secret names:
 
 :::{admonition} Access secrets
 :class: important
-The secrets you've created are available to use in GitHub Actions workflows. GitHub allows to access them using secrets context: `${{ secrets.<secret name> }}`.
+The secrets you've created are available to use in GitHub Actions workflows. GitHub allows to access them using the secrets context: `${{ secrets.<secret name> }}`.
 
-e.g:
+The recommended way to use them is to map each secret to an environment variable with `env:`, and only reference the variables in your shell commands:
 
-```bash
-echo ${{ secrets.USER_PASS }} | kinit ${{ secrets.USER_NAME }}@CERN.CH
+```yaml
+- name: access control
+  env:
+    USER_NAME: ${{ secrets.USER_NAME }}
+    USER_PASS: ${{ secrets.USER_PASS }}
+  run: echo "$USER_PASS" | kinit "$USER_NAME@CERN.CH"
 ```
+
+Prefer this over interpolating `${{ secrets.X }}` directly inside `run:` — direct interpolation splices the secret into the shell script text itself, which is easier to leak (e.g. through quoting mistakes) than an environment variable.
 :::
 
 :::{admonition} Further Reading
 :class: seealso
-- [https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions](https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions)
+- [https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets)
 :::
 
 ## Adding Artifacts on Success
@@ -164,29 +179,35 @@ Let's add `artifacts` to our `skim` job to save the `skim_ggH.root` file. Let's 
 ```yaml
 ...
 skim:
-   needs: build_skim
-   runs-on: ubuntu-latest
-   container: rootproject/root:6.26.10-conda
-   steps:
-     - name: checkout repository
-       uses: actions/checkout@v4
+  needs: build_skim
+  runs-on: ubuntu-latest
+  container: rootproject/root:6.32.04-ubuntu24.04
+  steps:
+    - name: checkout repository
+      uses: actions/checkout@v6
 
-     - uses: actions/download-artifact@v4
-       with:
-         name: skim6.26.10
+    - uses: actions/download-artifact@v8
+      with:
+        name: skim6.32.04-ubuntu24.04
 
-     - name: access control
-       run: echo ${{ secrets.USER_PASS }} | kinit ${{ secrets.USER_NAME }}@CERN.CH
+    - name: access control
+      env:
+        USER_NAME: ${{ secrets.USER_NAME }}
+        USER_PASS: ${{ secrets.USER_PASS }}
+      run: |
+        apt-get update && apt-get install -y krb5-user
+        echo "$USER_PASS" | kinit "$USER_NAME@CERN.CH"
 
-     - name: skim
-       run: |
-         chmod +x ./skim
-         ./skim root://eosuser.cern.ch//eos/user/g/gstark/AwesomeWorkshopFeb2020/GluGluToHToTauTau.root skim_ggH.root 19.6 11467.0 0.1
+    - name: skim
+      run: |
+        chmod +x ./skim
+        ./skim root://eosuser.cern.ch//eos/user/g/gstark/AwesomeWorkshopFeb2020/GluGluToHToTauTau.root skim_ggH.root 19.6 11467.0 0.1
 
-     - uses: actions/upload-artifact@v4
-       with:
-         name: skim_ggH
-         path: skim_ggH.root
+    - uses: actions/upload-artifact@v7
+      with:
+        name: skim_ggH
+        path: skim_ggH.root
+        retention-days: 7
 ```
 :::
 ::::

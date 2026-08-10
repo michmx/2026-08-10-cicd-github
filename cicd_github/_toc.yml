@@ -13,10 +13,10 @@ chapters:
 - file: 05-understanding-yaml-and-ci
 #- file: 08-adding-ci-to-your-code
 - file: 06-the-matrix
-- file: 11-running-dependent-jobs
-- file: 12-skim-milk
-- file: 13-the-spy-game
-- file: 14-plotting-to-take-over-the-world
+- file: 07-running-dependent-jobs
+#- file: 12-skim-milk
+#- file: 13-the-spy-game
+- file: 08-plotting-to-take-over-the-world
 - file: 15-a-simple-test
 - file: 16-homework
 - file: 17-github-packages
