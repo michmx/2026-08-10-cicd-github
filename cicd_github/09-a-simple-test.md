@@ -128,11 +128,17 @@ pytest tests/test_histograms.py                       # run one file
 pytest tests/test_histograms.py::test_book_histogram  # run one test
 ```
 
-Note: ROOT is required to run the tests. If using the JupyterHub instance provided for this tutorial, 
-you can run the tests in a terminal with the following commands:
+:::{admonition} Note
+:class: note
+ROOT and Python bindings are required to run the tests. If using the JupyterHub instance provided for this 
+tutorial, you can run the tests in a terminal with the following commands:
 ```
-apptainer exec docker://rootproject/root:6.32.04-ubuntu24.04 pytest
+apptainer shell /cvmfs/singularity.opensciencegrid.org/opensciencegrid/osgvo-el9:latest
+source /cvmfs/sw.hsf.org/key4hep/setup.sh
+pytest
 ```
+We will explore more about containers on Wednesday.
+:::
 
 ## Running tests in GitHub Actions
 
@@ -180,73 +186,6 @@ marked as failed — exactly the red ❌ next to the commit that tells you (and 
 trust that version of the code. 
 
 Try it out: break the `ranges` on purpose (e.g. unvalid range in a variable), push, and watch the parametrized tests catch it.
-
-When a test fails, it should be easy to detect what was expected and determine how
-to pinpoint the problem. For this, it is important to report the test results in a way that is easy to understand.
-As the number of tests implemented scale up, it is also important to quickly identify the tests that are failing, and 
-the main reason for the failure. Looking at the pipeline log is not the best way to do this.
-
-GitLab CI provides a way to report test results in a standard format, so that they can be easily visualized in the
-pipeline results. This is done by using the [JUnit](https://junit.org/junit5/) test report XML format (JUnit is a popular
-testing framework for Java, but the XML format is language-agnostic and the reports have become a standard).
-
-Each framework has its own way to generate the JUnit XML report (check the documentation of your favorite tool). 
-For CTest, we can use the `--output-junit <file>` option. Once the XML is generated, we need to upload it as an artifact
-The `.gitlab-ci.yml` file looks then like this:
-
-```yaml
-stages:
-  - build
-  - run
-  - test
-    
-before_script:
-  - mkdir -p cpp/analysis/build
-
-build_code:
-  stage: build
-  image: rootproject/root:6.26.10-ubuntu22.04
-  script:
-    - cd cpp/analysis/build
-    - cmake ../
-    - make
-  artifacts:
-    paths:
-      - cpp/analysis/build/
-build_code_latest:
-  stage: build
-  image: rootproject/root:latest
-  script:
-    - cd cpp/analysis/build
-    - cmake ../
-    - make
-  allow_failure: true
-  
-make_histograms:
-  stage: run
-  image: rootproject/root:6.26.10-ubuntu22.04
-  dependencies:
-    - build_code
-  script:
-    - cd cpp/analysis/build
-    - time ./src/double_muon_analysis ../data/DoubleMu.root
-  artifacts:
-    paths:
-      - cpp/analysis/build/histograms.root
-    expire_in: 1 day
-
-test_histograms:
-  stage: test
-  image: rootproject/root:6.26.10-ubuntu22.04
-  dependencies:
-    - build_code
-    - make_histograms
-  script:
-    - cd cpp/analysis/build
-    - ctest --output-on-failure
-```
-
-Let's commit and push the changes, and check the pipeline results.
 
 
 ## Report test results
